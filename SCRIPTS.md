@@ -1,11 +1,13 @@
-starting with plain cents 6.5 installations on all nodes with network access possible through ssh
+starting with plain cents 6.5 installations on all nodes with network access possible through ssh to each of the machines
+we have one headnode, a couple of computenodes and a storagenode in our example system
+
 
 * log into headnode, update, install some important packages
 ```bash
 yum update
 yum install bind-utils
 ```
-fix locale problems (for modern perl)
+fix locale problems (for modern perl) in centos 6.5
 ```bash
 $ vi /etc/sysconfig/i18n
 LC_CTYPE="en_US.UTF-8"
@@ -73,14 +75,89 @@ chmod +x $BEO_SCRIPTS/ext_nodelist_ip.sh
 $BEO_SCRIPTS/ext_nodelist_ip.sh 
 ```
 
-* build following scripts to automate server installation
+* write following scripts to automate server installation (execute commands on several machines)
+
+```bash
+echo "
+#!/bin/bash
+# first parameter: a comma seperated list of host names (i use aliases for this)
+# to execute this script
+# second parameter: the command one wants to execute on all nodes put into quotes
+# e.g. ./node_executor.sh "hdn,cn1,sn" "wget http://download.me/test.tar.gz -C /tmp"
+hosts=\"\$1\"
+cmdline=\"\$2\"
+
+if [ -z \"\$hosts\" ]
+  then
+    echo \"Please enter comma separated list of hostnames 'storagenode1,storagenode2'\"
+    exit 1
+fi
+if [ -z \"\$cmdline\" ]
+  then
+    echo \"Please enter the command you want to execute remotely\"
+    exit 1
+fi
+
+
+array=(\${hosts//,/ })
+for i in \"\${!array[@]}\"
+do
+    \`ssh \${array[i]} '\$cmdline'\`
+done
+" > $BEO_SCRIPTS/node_executor.sh
+chmod +x $BEO_SCRIPTS/node_executor.sh
+```
+
+
+* write following scripts to automate server installation (copy files on several machines)
+```bash
+echo "
+#!/bin/bash
+# first parameter: a comma seperated list of host names (i use aliases for this)
+# to execute this script
+# second parameter: the file/dir one wants to copy on all nodes from local one
+# will be put in the same directory as on the local machine
+# put them in quotes and then spaces if you want to copy more than one
+# e.g. ./node_copier.sh "hdn,cn1,sn" "/tmp/test.txt /etc/environment"
+
+hosts=\"\$1\"
+files_to_copy=\"\$2\"
+
+if [ -z \"\$hosts\" ]
+  then
+    echo \"Please enter comma separated list of hostnames 'storagenode1,storagenode2'\"
+    exit 1
+fi
+if [ -z \"\$files_to_copy\" ]
+  then
+    echo \"Please enter the files you want to copy to remote servers (separated by blank)\"
+    exit 1
+fi
+
+host_array=(\${hosts//,/ })
+file_array=(\${fileList// / })
+for i in \"\${!host_array[@]}\"
+do
+    for j in \"\${!file_array[@]}\"
+    do 
+	    echo \"heloo word\"
+	    echo \"scp \${file_array[j]} \${host_array[i]}:\"
+	done
+done
+" > $BEO_SCRIPTS/node_copier.sh
+
+chmod +x $BEO_SCRIPTS/node_copier.sh
+```
+
+
+* write following scripts to automate server installation (append text to single file on several machines)
 ```bash
 echo "#!/bin/bash
 
 # first parameter: a comma seperated list of host names (i use aliases for this)
 # to execute this script
-# second parameter: the command one wants to execute on all nodes put into quotes
-# e.g. ./exec_on_nodes.sh hdn,cn1,sn "wget http://download.me/test.tar.gz -C /tmp"
+# second parameter: the file one wants to append data to it from a local stdin
+# e.g. cat ~/.ssh/id_rsa.pub | /node_append.sh hdn,cn1,sn "~/.ssh/id_rsa.pub"
 
 if [ -z "$1" ]
   then
@@ -89,62 +166,22 @@ if [ -z "$1" ]
 fi
 if [ -z "$2" ]
   then
-    echo "Please enter the command you want to execute remotely"
+    echo "Please enter the file you want to append TO remotely"
     exit 2
 fi
 
 hosts=$1
+#read stdin (e.g. from cat or echo command)
+read stdin_var;
 
 array=(${hosts//:/ })
 for i in "${!array[@]}"
 do
-    echo "ssh ${array[i]} $2"
+    echo $stdin_var | ssh 'cat >> $2'
 done
-" > $SCRIPTS/node_executor.sh
-```
-
-
-copy_to_nodes.sh
-```bash
-#!/bin/bash
-
-source ./copy_all_computenodes.sh $1 $2
-rsync -rav $1 storagenode:$2 
-```
-
-append_file_on_nodes.sh
-```bash
-#!/bin/bash
-
-source ./copy_all_computenodes.sh $1 $2
-rsync -rav $1 storagenode:$2 
-```
-
-
-
-make all executable 
-```bash
-chmod +x ~/scripts/copy_all*.sh ~/scripts/exec_all*.sh
-```
-export script dir
-vi ~/.bash_rc
-```bash
-
+" > $BEO_SCRIPTS/node_append.sh
 ```
 
 Now that we have set up all our scripts we can start installing the cluster software
+for this refer to the next document BASIC_CLUSTER.md
 
-* generate and share roots ssh key for passwordless access to the nodes (still on headnode) —these are the last times you need to provide root password, afterwards it works without:
-```bash
-ssh-keygen -t rsa
-exec_all_nodes.sh "mkdir -p /root/ssh"
-```
-
-
-* exec on all nodes
-
-* put server names from compute nodes and storage node on nodes
-
-
-
-* share root directory on every node using nfs
