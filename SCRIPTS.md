@@ -77,7 +77,7 @@ do
 done < $BEO_NODE_CFG
 mv $BEO_NODE_CFG'.TMP' $BEO_NODE_CFG
 ```
-
+exec it now
 ```bash
 chmod +x $BEO_SCRIPTS/ext_nodelist_ip.sh
 $BEO_SCRIPTS/ext_nodelist_ip.sh 
@@ -114,10 +114,11 @@ fi
 array=(${hosts//,/ })
 for i in "${!array[@]}"
 do
-    `ssh ${array[i]} '$cmdline'`
+   cmdline="$cmdline"
+   ssh ${array[i]} $cmdline
 done
 ```
-make executab;e
+make executable
 ```bash
 $ chmod +x $BEO_SCRIPTS/node_executor.sh
 ```
@@ -176,33 +177,37 @@ $ vi $BEO_SCRIPTS/node_append.sh
 ```
 put in content
 ```bash
-echo "#!/bin/bash
+#!/bin/bash
 
 # first parameter: a comma seperated list of host names (i use aliases for this)
 # to execute this script
 # second parameter: the file one wants to append data to it from a local stdin
 # e.g. cat ~/.ssh/id_rsa.pub | /node_append.sh hdn,cn1,sn "~/.ssh/id_rsa.pub"
+# please note: if the file you want to append does not exist, it will be created
 
-if [ -z "$1" ]
+hosts="$1"
+file="$2"
+
+if [ -z "$hosts" ]
   then
     echo "Please enter comma separated list of hostnames 'storagenode1,storagenode2'"
     exit 1
 fi
-if [ -z "$2" ]
+if [ -z "$file" ]
   then
     echo "Please enter the file you want to append TO remotely, use quotes surrounding it"
     exit 2
 fi
 
-hosts=$1
-#read stdin (e.g. from cat or echo command)
-read stdin_var;
-
-array=(${hosts//:/ })
+TEMPFILE="/tmp/$(basename $0).$$.tmp"
+(cat  < /dev/stdin) > $TEMPFILE
+array=(${hosts//,/ })
 for i in "${!array[@]}"
 do
-    echo $stdin_var | ssh 'cat >> $2'
+    cmdline="if [ ! -f \"$file\" ]; then touch $file; else cp $file $file.ORG; fi; cat - >> $file"
+    cat $TEMPFILE | ssh ${array[i]} $cmdline
 done
+rm $TEMPFILE
 ```
 
 make executable
