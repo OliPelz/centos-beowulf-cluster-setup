@@ -44,21 +44,23 @@ $ source /opt/beowolf-scripts/beo_env.sh
 for reintalization of the beowolf settings
 
 * make list of available node domains and synonyms (extend this list if you add nodes later)
-* syntax is <hostname> <alias/shortname> <domainname>
+* syntax is <hostname> <alias/shortname> <domainname
+	
 ```bash
 echo "headnode        hdn    sc-headnode  
 computenode1    cn1    sc-computenode1
 computenode2    cn2    sc-computenode2
 storagenode     sn     sc-storagenode
 " > $BEO_NODE_CFG
-```bash
-
+```
 
 * update our nodelist file with IPs and update /etc/hosts
 create file $BEO_SCRIPTS/ext_nodelist_ip.sh 
+
 ```bash
 vi $BEO_SCRIPTS/ext_nodelist_ip.sh
 ```
+
 and put in content
 ```bash
 #!/usr/bin/bash
