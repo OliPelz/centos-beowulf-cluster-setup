@@ -1,6 +1,46 @@
 starting with plain cents 6.5 installations on all nodes with network access possible through ssh to each of the machines
 we have one headnode, a couple of computenodes and a storagenode in our example system
 
+TODO: -write a script which can extract the hostname for an given alias (we need this when setting up torque in BASIC_CLUSTER
+      -write two script which installs software:
+        one which installs binary software
+        one which installs source software (compiles) 
+        for binary software see something like:
+        ```bash
+$BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "wget http://downloads.sourceforge.net/project/bowtie-bio/bowtie2/2.2.4/bowtie2-2.2.4-linux-x86_64.zip -P /opt/software/src;\
+unzip /opt/software/src/bowtie2-2.2.4-linux-x86_64.zip -d /opt/software;\
+echo 'export PATH=\$PATH:/opt/software/bowtie2-2.2.4/' >>/etc/profile.d/bowtie2.sh;\
+chmod +x /etc/profile.d/bowtie2.sh;
+source /etc/profile.d/bowtie2.sh"
+```  
+       for source software see:
+       cd /opt/software/src
+git clone git://github.com/pezmaster31/bamtools.git
+mkdir /opt/software/build/bamtools
+cd /opt/software/build/bamtools
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/software/bamtools /opt/software/src/bamtools
+make
+make install
+
+echo 'export PATH=\$PATH:/opt/software/bamtools/bin' >>/etc/profile.d/bamtools.sh;
+chmod +x /etc/profile.d/bamtools.sh;
+source /etc/profile.d/bamtools.sh
+
+$BEO_SCRIPTS/node_copier.sh "cn1,cn2" "/opt/software/src/bamtools"
+
+$BEO_SCRIPTS/node_executor.sh "cn1,cn2" "mkdir /opt/software/build/bamtools;\
+cd /opt/software/build/bamtools;\
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/software/bamtools /opt/software/src/bamtools;\
+make;\
+make install;\
+echo '/opt/software/bamtools/lib/bamtools' > /etc/ld.so.conf.d/bamtools.conf;\
+ldconfig;\
+echo 'export PATH=\$PATH:/opt/software/bamtools/bin' >>/etc/profile.d/bamtools.sh;\
+chmod +x /etc/profile.d/bamtools.sh;\
+source /etc/profile.d/bamtools.sh"
+- the scripts will unpack tar, gz, bz2 and zip 
+- the script will have a parameter which let you specify: "make,make install,cmake"
+
 
 * log into headnode, update, install some important packages
 ```bash
@@ -154,15 +194,16 @@ if [ -z "$files_to_copy" ]
 fi
 
 host_array=(${hosts//,/ })
-file_array=(${fileList// / })
+file_array=(${files_to_copy// / })
 for i in "${!host_array[@]}"
 do
     for j in "${!file_array[@]}"
     do 
-    echo "heloo word"
-    echo "scp ${file_array[j]} ${host_array[i]}:"
+     #echo "scp ${file_array[j]} ${host_array[i]}:"
+     scp -r ${file_array[j]} ${host_array[i]}:
+    done
 done
-done
+```
 
 make executabe
 ```bash

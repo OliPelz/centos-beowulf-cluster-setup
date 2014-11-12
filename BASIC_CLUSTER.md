@@ -9,7 +9,8 @@ We are beginning by logging in to the headnode. This machine will be used to ins
 
 when logging in head node with a fresh ssh session execute:
 ```bash
-```source /opt/beowolf-scripts/beo_env.sh
+source /opt/beowolf-scripts/beo_env.sh
+```
 
 if you havent done in SCRIPTS.md, put the beowolf shell script path to PATH variable (only have to do once)
 ```bash
@@ -197,20 +198,42 @@ http://wiki.hpc.ufl.edu/doc/TorqueHowto
 http://people.sissa.it/~calucci/smr1967/batch_admin/torque+maui-admin_notes.pdf
 https://wiki.archlinux.org/index.php/TORQUE
 http://serverfault.com/questions/425346/cant-open-display-x11-forwarding-cent-os
+http://www.chimica.unipd.it/luigino.feltre/pubblica/unix/openpbs.html
 
-(the x11 files are needed for the x11 gui called xpbs)
+
+I always keep the following folder structure
+```bash
+/opt/software        here i install all 3d party software to
+/opt/software/src    here i download the source code (and keep the archives/packages)
+/opt/software/build  here i put compiled code in (can be wiped or recompiled later)
+```
+create dirs
+```bash
+mkdir -p /opt/software/src
+mkdir -p /opt/software/build
+```
+
+first install all necessary prequisites for torque (the x11 files are needed for the x11 gui called xpbs)
 ```bash
 yum install make rpm-build gawk libxml2-devel openssh-clients openssl-devel gcc gcc-c++ glibc-devel groff\
   boost-devel tcl tcl-devel tk tk-devel flex bison xorg-x11-xauth xorg-x11-fonts-* xorg-x11-utils
-cd /tmp
+cd /opt/software/src
 wget http://www.adaptivecomputing.com/download/torque/torque-5.0.1-1_4fa836f5.tar.gz
-cd torque-xxx
-./configure --prefix=/opt/torque-5.0.1
+tar xvf torque-5.0.1-1_4fa836f5.tar.gz -C /opt/software/build
+cd /opt/software/build/torque-5.xxx
+./configure --prefix=/opt/software/torque-5.0.1 --exec-prefix=/opt/software/torque-5.0.1 
 make 
 make rpm
 ```
 
+enable x11 on ssh (there are thousands of threads on the internet about it and not in the scope of this document!)
+
+
 install all of the above on the headnode
+```bash
+make install
+```
+or
 ```bash
 cd /root/rpmbuild/RPMS/x86_64
 rpm -Uvh torque-5.0.1-1.adaptive.el6.x86_64.rpm \
@@ -264,16 +287,17 @@ restart torque server
 now configure the computenodes
 
 create mom config file - mom is the actual process starter on the computenodes
-and start the mom service
+and start the mom service, also put it in runlevel at startup
 ```bash
 $BEO_SCRIPTS/node_executor.sh "cn1,cn2"  "touch /var/spool/torque/mom_priv/config"
 $BEO_SCRIPTS/node_executor.sh "cn1,cn2"  "/etc/init.d/pbs_mom start"
+$BEO_SCRIPTS/node_executor.sh "cn1,cn2" "chkconfig pbs_mom on"
 ```
 
 now the pbs server needs to know the names of the computenodes (where to run the queue)
 we need to provide real hostnames
 ```bash
-we need some classes in our nodelist.txt we want to query
+TODO: we need some script and a classes in our nodelist.txt we want to query
 than we can apply 
 hostname or nslookup and put stuff into >>/var/spool/torque/server_priv/nodes
 ###################################################
@@ -348,8 +372,64 @@ now test the passwordless login
 ssh cn1
 ssh cn2
 ```
+test torque, should be fine now (state=free) etc.
+```bash
+pbsnodes -a
+```
+run a job
+```bash
+echo "sleep 30" | qsub
+```
+check logs for test run
+```bash
+qstat -a
+/var/spool/torque/server_logs
+/var/log/daemon.log
+```
 
 test pbs gui
 ```
 xpbs
 ```
+
+restart all servers again and see if torque works on startup!
+after restart use
+```bash
+pbsnodes -a
+echo "sleep 30" | qsub
+qstat -a
+etc.
+```
+to see if the cluster services are up!
+
+
+done
+
+
+
+useful scripts for torque
+
+restart computenodes
+```bash
+echo '#!/bin/bash
+$BEO_SCRIPTS/node_executor.sh "cn1,cn2"  "shutdown -rf now"'> $BEO_SCRIPTS/restart_compute_nodes.sh
+chmod +x $BEO_SCRIPTS/restart_compute_nodes.sh
+```
+restart complete cluster
+```bash
+echo '#!/bin/bash
+$BEO_SCRIPTS/node_executor.sh "cn1,cn2,sn,hdn"  "shutdown -rf now"'> $BEO_SCRIPTS/restart_all_nodes.sh
+chmod +x $BEO_SCRIPTS/restart_all_nodes.sh
+```
+
+monitor and troubleshoot mom logs TODO!
+```bash
+```bash
+echo '#!/bin/bash
+ssh user@host1 -C tail -f /path/to/log >> /tmp/log1.tmp
+ssh user@host2 -C tail -f /path/to/log >> /tmp/log2.tmp
+tail -q -f /tmp/log1.tmp /tmp/log2.tmp
+```
+
+```
+
