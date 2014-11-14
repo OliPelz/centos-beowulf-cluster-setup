@@ -192,7 +192,7 @@ than after rebooting look if we can still see that file
 $BEO_SCRIPTS/node_executor.sh "cn1,cn2" "ls -al /data/test.txt"
 ```
 
-now lets install torque and maui (we are still on the headnode) on headnode
+now lets install torque (we are still on the headnode) on headnode
 sources: http://www.discngine.com/blog/2014/6/27/install-torque-on-a-single-node-centos-64
 http://wiki.hpc.ufl.edu/doc/TorqueHowto
 http://people.sissa.it/~calucci/smr1967/batch_admin/torque+maui-admin_notes.pdf
@@ -226,14 +226,17 @@ make
 make rpm
 ```
 
-enable x11 on ssh (there are thousands of threads on the internet about it and not in the scope of this document!)
-
+enable x11 on ssh (there are thousands of threads on the internet about it and not in the scope of this document!), just short
+Enable the following in the sshd_config file
+```bash
+X11Forwarding yes
+```
 
 install all of the above on the headnode
 ```bash
 make install
 ```
-or
+or if you dont want to use make install you can install the generated packages
 ```bash
 cd /root/rpmbuild/RPMS/x86_64
 rpm -Uvh torque-5.0.1-1.adaptive.el6.x86_64.rpm \
@@ -256,13 +259,13 @@ $BEO_SCRIPTS/node_executor.sh "cn1,cn2" "rpm -Uvh /data/torque-5.0.1/torque-5.0.
 https://wiki.heprc.uvic.ca/twiki/bin/view/Main/TestClusterTorqueInstallation
 ```
 
-disable headnode running jobs! - headnode is only for resource managing and scheduling not actually running
+disable headnode running jobs! - headnode is only for resource managing and scheduling not actually running jobs
 ```bash
 chkconfig pbs_mom off
 service pbs_mom stop
 ```
 
-now configure torque
+now configure torque, create the torque server config file
 
 ```bash
 pbs_server -t create
@@ -280,6 +283,19 @@ qmgr -c "set queue batch resources_default.walltime=3600"
 qmgr -c "set server default_queue=batch"
 ```
 
+check that the full qualified server host name has been entered into 
+/var/spool/torque/mom_priv/config automatically by the makefile, if not change!
+(should not be the alias hostname!)
+example output
+```bash
+$pbsserver sc-headnode
+```
+
+compare the hostname found in the file with the one found here
+```bash
+$BEO_SCRIPTS/get_domain_for_alias.sh hdn
+```
+
 restart torque server
 ```bash
 /etc/init.d/pbs_server restart
@@ -294,28 +310,23 @@ $BEO_SCRIPTS/node_executor.sh "cn1,cn2"  "/etc/init.d/pbs_mom start"
 $BEO_SCRIPTS/node_executor.sh "cn1,cn2" "chkconfig pbs_mom on"
 ```
 
-now the pbs server needs to know the names of the computenodes (where to run the queue)
-we need to provide real hostnames
+now the pbs server ON THE HEADNODE needs to know the names of the computenodes (where to run the queue)
+we need to provide full hostnames and not the alias names here
+Also we will provide the amount of cores we have on each computenode, then you have to introduce a "np=<number>" after the hostname of the nodes
+http://docs.adaptivecomputing.com/torque/4-1-4/Content/topics/1-installConfig/specifyComputeNodes.htm
+if you dont want to use np information, you will have to use "qmgr -c set server auto_node_np = True" in your torque server config instead
+
 ```bash
-TODO: we need some script and a classes in our nodelist.txt we want to query
-than we can apply 
-hostname or nslookup and put stuff into >>/var/spool/torque/server_priv/nodes
-###################################################
-#
-# Die Einstellungen fuer die Knoten Anzahl CPUs
-# wir haben zwar 16 CPUs pro Computenode, das System lief
-# aber erst rund bei 8 
-# Datei: /var/spool/torque/server_priv/nodes
-
-cn1 np=8
-cn2 np=8
-
+CN=8
+echo "`$BEO_SCRIPTS/get_domain_for_alias.sh cn1` np=$CN" >>/var/spool/torque/server_priv/nodes
+echo "`$BEO_SCRIPTS/get_domain_for_alias.sh cn2` np=$CN" >>/var/spool/torque/server_priv/nodes
 ```
 
-headnode cannot talk to the computenodes yet
+headnode cannot talk to the computenodes yet, see "state=down" message
 ```bash
 pbsnodes -a
 ```
+this is because pbs clients on computenodes dont know who their master is (no communication!)
 first you have to enable torque ports on all nodes in the firewall
 
 ```bash
@@ -331,10 +342,11 @@ restart iptables on all nodes
 $BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "service iptables restart"
 ```
 
-now since we have announced all the computenodes to the headnode we also have to make the pbs server (headnode) known to the computenodes in order that they can talk back
+now since we have announced all the computenodes to the headnode we also have to make the pbs server (headnode) known to the computenodes in
+order that they can talk back
 ```bash
-get the full qualified name of the headnode write a script than
-"sed  -ir 's/^$pbsserver localhost$/pbsserver <name of headnode>/g' /var/spool/torque/mom_priv/config"
+MYMASTER=`$BEO_SCRIPTS/get_domain_for_alias.sh hdn`
+$BEO_SCRIPTS/node_executor.sh "cn1,cn2" "sed  -ir 's/^$pbsserver localhost$/pbsserver $MYMASTER/g' /var/spool/torque/mom_priv/config"
 ```
 
 create a user for running jobs (root cannot run jobs)
@@ -344,7 +356,7 @@ $BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "useradd <nameofuser>"
 set a password
 ```bash
 $BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "echo '<yourpassword>' | passwd <nameofuser> --stdin"
-```<>
+```
 
 now we have to share the ssh key for this user as well in order that pbs will work
 this is similar to creating passwordless login for user root

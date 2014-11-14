@@ -1,46 +1,8 @@
 starting with plain cents 6.5 installations on all nodes with network access possible through ssh to each of the machines
 we have one headnode, a couple of computenodes and a storagenode in our example system
 
-TODO: -write a script which can extract the hostname for an given alias (we need this when setting up torque in BASIC_CLUSTER
-      -write two script which installs software:
-        one which installs binary software
-        one which installs source software (compiles) 
-        for binary software see something like:
-        ```bash
-$BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "wget http://downloads.sourceforge.net/project/bowtie-bio/bowtie2/2.2.4/bowtie2-2.2.4-linux-x86_64.zip -P /opt/software/src;\
-unzip /opt/software/src/bowtie2-2.2.4-linux-x86_64.zip -d /opt/software;\
-echo 'export PATH=\$PATH:/opt/software/bowtie2-2.2.4/' >>/etc/profile.d/bowtie2.sh;\
-chmod +x /etc/profile.d/bowtie2.sh;
-source /etc/profile.d/bowtie2.sh"
-```  
-       for source software see:
-       cd /opt/software/src
-git clone git://github.com/pezmaster31/bamtools.git
-mkdir /opt/software/build/bamtools
-cd /opt/software/build/bamtools
-cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/software/bamtools /opt/software/src/bamtools
-make
-make install
 
-echo 'export PATH=\$PATH:/opt/software/bamtools/bin' >>/etc/profile.d/bamtools.sh;
-chmod +x /etc/profile.d/bamtools.sh;
-source /etc/profile.d/bamtools.sh
-
-$BEO_SCRIPTS/node_copier.sh "cn1,cn2" "/opt/software/src/bamtools"
-
-$BEO_SCRIPTS/node_executor.sh "cn1,cn2" "mkdir /opt/software/build/bamtools;\
-cd /opt/software/build/bamtools;\
-cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/software/bamtools /opt/software/src/bamtools;\
-make;\
-make install;\
-echo '/opt/software/bamtools/lib/bamtools' > /etc/ld.so.conf.d/bamtools.conf;\
-ldconfig;\
-echo 'export PATH=\$PATH:/opt/software/bamtools/bin' >>/etc/profile.d/bamtools.sh;\
-chmod +x /etc/profile.d/bamtools.sh;\
-source /etc/profile.d/bamtools.sh"
-- the scripts will unpack tar, gz, bz2 and zip 
-- the script will have a parameter which let you specify: "make,make install,cmake"
-
+TODO: test the new install scripts: install_binary.sh install_source.sh
 
 * log into headnode, update, install some important packages
 ```bash
@@ -84,10 +46,10 @@ $ source /opt/beowolf-scripts/beo_env.sh
 for reintalization of the beowolf settings
 
 * make list of available node domains and synonyms (extend this list if you add nodes later)
-* syntax is <hostname> <alias/shortname> <domainname
+* syntax is <alias for hostname> <short alias/shortname> <true hostname in the network> <type of>
 	
 ```bash
-echo "headnode        hdn    sc-headnode  
+echo "headnode        hdn    sc-headnode 
 computenode1    cn1    sc-computenode1
 computenode2    cn2    sc-computenode2
 storagenode     sn     sc-storagenode
@@ -121,6 +83,19 @@ exec it now
 ```bash
 chmod +x $BEO_SCRIPTS/ext_nodelist_ip.sh
 $BEO_SCRIPTS/ext_nodelist_ip.sh 
+```
+
+* write a script which returns true domain name for given alias
+create file $BEO_SCRIPTS/get_domain_for_alias.sh
+```bash 
+#!/bin/bash
+
+while read host alias domain ip
+do
+    #skip empty lines
+    [ -z $host ] && [ -z $alias] && [ -z $domain] &&  continue
+    [ "$alias" == "$1" ] && echo $domain
+done < $BEO_NODE_CFG
 ```
 
 * write following scripts to automate server installation (execute commands on several machines)

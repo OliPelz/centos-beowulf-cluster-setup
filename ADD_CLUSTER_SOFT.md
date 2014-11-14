@@ -142,7 +142,7 @@ $BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "/opt/software/bowtie2-2.2.4/bowtie2
 blast suite
 ```bash
 wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.2.30+-x64-linux.tar.gz -P /opt/software/src
-#my copier is not working properly with + etc.
+#my copier is not working properly with '+' etc.
 mv /opt/software/src/ncbi-blast-2.2.30+-x64-linux.tar.gz /opt/software/src/ncbi-blast-2.2.30.tar.gz
 $BEO_SCRIPTS/node_copier.sh "cn1,cn2" "/opt/software/src/ncbi-blast-2.2.30.tar.gz"
 
