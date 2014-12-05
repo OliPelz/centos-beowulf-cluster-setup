@@ -45,8 +45,8 @@ $ source /opt/beowolf-scripts/beo_env.sh
 ```
 for reintalization of the beowolf settings
 
-* make list of available node domains and synonyms (extend this list if you add nodes later)
-* syntax is <alias for hostname> <short alias/shortname> <true hostname in the network> <type of>
+* make list of available node domains and synonyms (extend this list if you add nodes later), please change this list for your needs!
+* syntax is \<alias for hostname\> \<short alias/shortname\> \<true hostname in the network\> \<type of\>
 	
 ```bash
 echo "headnode        hdn    sc-headnode 
