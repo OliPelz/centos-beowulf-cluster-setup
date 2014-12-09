@@ -4,8 +4,8 @@ I always keep the same folder structure
 
 ```bash
 /opt/software        here i install all 3d party software to
-/opt/software/src    here i download the source code
-/opt/software/build  here i put compiled code in (can be wiped or recompiled later)
+/opt/software-packages/src    here i download the source code
+/opt/software-packages/build  here i put compiled code in (can be wiped or recompiled later)
 ```
 
 TODO: adjust scripts to dont download everything on all nodes but only download on headnode and move to all other nodes to save bandwith
@@ -17,8 +17,9 @@ software to install on all clusters (log into headnode)
 http://tecadmin.net/steps-to-install-java-on-centos-5-6-or-rhel-5-6/
 create dirs (if not done before in BASIC_CLUSTER.md)
 ```bash
-mkdir -p /opt/software/src
-mkdir -p /opt/software/build
+mkdir -p /opt/software
+mkdir -p /opt/software-packages/src
+mkdir -p /opt/software-packages/build
 cd $_ 
 wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" \
 "http://download.oracle.com/otn-pub/java/jdk/7u71-b14/jdk-7u71-linux-x64.tar.gz"
@@ -44,6 +45,10 @@ chmod +x /etc/profile.d/java.sh
 
 source /etc/profile.d/java.sh
 ```
+test java
+```bash
+java -version
+```
 
 * java on computenodes (we are still on headnode)
 ```bash
@@ -51,7 +56,7 @@ source /opt/beowolf-scripts/beo_env.sh
 ```
 
 ```bash
-$BEO_SCRIPTS/node_executor.sh "cn1,cn2" "mkdir -p /opt/software/src /opt/software/build" 
+$BEO_SCRIPTS/node_executor.sh "cn1,cn2" "mkdir -p /opt/software /opt/software-packages/src /opt/software-packages/build" 
 ```
 install wget on nodes
 ```bash

@@ -109,7 +109,11 @@ first install nfs tools on all the nodes so we can export partitions on the stor
 ```bash
 $BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2,sn" "yum install -y nfs-utils"
 ```
-on the storage node we need to start the nfs export service on startup
+on the storage node we need to start the nfs export service on startup and the portmapper service
+```bash
+$BEO_SCRIPTS/node_executor.sh "sn" "chkconfig rpcbind on;service rpcbind start"
+```
+
 ```bash
 $BEO_SCRIPTS/node_executor.sh "sn" "chkconfig nfs on;service nfs start"
 ```
@@ -212,26 +216,28 @@ http://www.chimica.unipd.it/luigino.feltre/pubblica/unix/openpbs.html
 I always keep the following folder structure
 ```bash
 /opt/software        here i install all 3d party software to
-/opt/software/src    here i download the source code (and keep the archives/packages)
-/opt/software/build  here i put compiled code in (can be wiped or recompiled later)
+/opt/software-packages/src    here i download the source code (and keep the archives/packages)
+/opt/software-packages/build  here i put compiled code in (can be wiped or recompiled later)
 ```
 create dirs
 ```bash
-mkdir -p /opt/software/src
-mkdir -p /opt/software/build
+mkdir -p /opt/software
+mkdir -p /opt/software-packages/src
+mkdir -p /opt/software-packages/build
 ```
 
 first install all necessary prequisites for torque (the x11 files are needed for the x11 gui called xpbs)
 ```bash
 yum install make rpm-build gawk libxml2-devel openssh-clients openssl-devel gcc gcc-c++ glibc-devel groff\
   boost-devel tcl tcl-devel tk tk-devel flex bison xorg-x11-xauth xorg-x11-fonts-* xorg-x11-utils
-cd /opt/software/src
-wget http://www.adaptivecomputing.com/download/torque/torque-5.0.1-1_4fa836f5.tar.gz
-tar xvf torque-5.0.1-1_4fa836f5.tar.gz -C /opt/software/build
-cd /opt/software/build/torque-5.xxx
+cd /opt/software-packages/src
+wget http://www.adaptivecomputing.com/index.php?wpfb_dl=2864 -O torque-5.0.1-1_4fa836f5.tar.gz
+tar xvf torque-5.0.1-1_4fa836f5.tar.gz -C /opt/software-packages/build
+cd /opt/software-packages/build/torque-5.xxx
 ./configure --prefix=/opt/software/torque-5.0.1 --exec-prefix=/opt/software/torque-5.0.1 
 make 
 make rpm
+make install
 ```
 
 enable x11 on ssh (there are thousands of threads on the internet about it and not in the scope of this document!), just short
@@ -244,19 +250,20 @@ install all of the above on the headnode
 ```bash
 make install
 ```
-or if you dont want to use make install you can install the generated packages
-```bash
-cd /root/rpmbuild/RPMS/x86_64
-rpm -Uvh torque-5.0.1-1.adaptive.el6.x86_64.rpm \
-torque-client-5.0.1-1.adaptive.el6.x86_64.rpm \
-torque-devel-5.0.1-1.adaptive.el6.x86_64.rpm \
-torque-scheduler-5.0.1-1.adaptive.el6.x86_64.rpm \
-torque-server-5.0.1-1.adaptive.el6.x86_64.rpm  
-```
+
 install xpbs (graphical gui for torque) on the headnode
 ```bash
 make install_gui
 ```
+
+now put the torque binaries in the path
+```bash
+echo 'export PATH=$PATH:/opt/software/torque-5.0.1/bin' >>/etc/profile.d/torque.sh;
+chmod +x /etc/profile.d/torque.sh;
+source /etc/profile.d/torque.sh
+```
+
+/opt/software/torque-5.0.1/bin
 
 install torque client on the computenodes
 ```bash
@@ -325,13 +332,14 @@ http://docs.adaptivecomputing.com/torque/4-1-4/Content/topics/1-installConfig/sp
 if you dont want to use np information, you will have to use "qmgr -c set server auto_node_np = True" in your torque server config instead
 
 ```bash
-CN=8
+CN=875
 echo "`$BEO_SCRIPTS/get_domain_for_alias.sh cn1` np=$CN" >>/var/spool/torque/server_priv/nodes
 echo "`$BEO_SCRIPTS/get_domain_for_alias.sh cn2` np=$CN" >>/var/spool/torque/server_priv/nodes
 ```
 
 headnode cannot talk to the computenodes yet, see "state=down" message
 ```bash
+service pbs_server restart
 pbsnodes -a
 ```
 this is because pbs clients on computenodes dont know who their master is (no communication!)
@@ -356,6 +364,15 @@ order that they can talk back
 MYMASTER=`$BEO_SCRIPTS/get_domain_for_alias.sh hdn`
 $BEO_SCRIPTS/node_executor.sh "cn1,cn2" "sed  -ir 's/^$pbsserver localhost$/pbsserver $MYMASTER/g' /var/spool/torque/mom_priv/config"
 ```
+restart the pbs client services on the computenodes to make changes possible
+```bash
+$BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "service pbs_mom restart"
+```
+now you can test on the headnode and see that the state should be changed to "free", all computenodes are now accessible
+```bash
+pbsnodes -a
+```
+
 
 create a user for running jobs (root cannot run jobs)
 ```bash
