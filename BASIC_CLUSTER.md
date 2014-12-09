@@ -1,13 +1,20 @@
+In this document we will install all the basic clustering software to work with.
+We will use pbs torque for our queuing system.
+
+First we want to explain the definition what PBS is.
+
 * a pbs system consists of the following parts
    server (resource manager), scheduler, mom
    resource manager - manages all available resources e.g. CPU
    scheduler - gets information about free resources from the resource manager and manages the queue
    mom - The function of mom is to place jobs into execution as directed by the server
-* Prequesites: execute all steps in SCRIPTS.md
 
-We are beginning by logging in to the headnode. This machine will be used to install and configure all nodes of the cluster.
+* Prequesites for this script: execute all steps in SCRIPTS.md
 
-when logging in head node with a fresh ssh session execute:
+We are beginning by logging in to the headnode. This machine will be used to install and configure all other nodes of the cluster.
+
+when logging in head node with a fresh ssh session execute the following script to reaccess all our environment variables and
+installation system:
 ```bash
 source /opt/beowolf-scripts/beo_env.sh
 ```
@@ -17,8 +24,9 @@ if you havent done in SCRIPTS.md, put the beowolf shell script path to PATH vari
 echo PATH=$BEO_SCRIPTS:$PATH >> /etc/environment
 ```
 
-* disable selinux on all nodes plus headnode, this has to be done in order that all clustering communication work
-  escpecially the passwordless login from the headnode to all other nodes
+First we need to disable selinux on all nodes plus headnode, this has to be done in order that all clustering communication work 
+especially the passwordless login from the headnode to all other nodes
+Please not to make backups of all the config files you change !!!
 ```bash
 cp /etc/selinux/config /etc/selinux/config.ORG
 sed -i 's/^SELINUX=enforcing$/#SELINUX=enforcing\nSELINUX=disabled/g' /etc/selinux/config

@@ -1,6 +1,7 @@
-starting with plain cents 6.5 installations on all nodes with network access possible through ssh to each of the machines
+Starting with plain cents 6.5 installations on all nodes with network access possible through ssh to each of the machines
 we have one headnode, a couple of computenodes and a storagenode in our example system
 
+In this script we will setup the basic installation scripts for automated and convenient deployment of software on all nodes. 
 
 TODO: test the new install scripts: install_binary.sh install_source.sh
 
@@ -65,7 +66,7 @@ vi $BEO_SCRIPTS/ext_nodelist_ip.sh
 
 and put in content
 ```bash
-#!/usr/bin/bash
+#!/bin/bash
 
 while read host alias domain
 do
@@ -97,6 +98,7 @@ do
     [ "$alias" == "$1" ] && echo $domain
 done < $BEO_NODE_CFG
 ```
+chmod +x  $BEO_SCRIPTS/get_domain_for_alias.sh
 
 * write following scripts to automate server installation (execute commands on several machines)
  create following file 
