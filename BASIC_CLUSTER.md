@@ -57,32 +57,10 @@ $BEO_SCRIPTS/node_executor.sh "cn1,cn2,sn" "shutdown -r now"
 generate and share roots ssh key for passwordless access to the nodes (still on headnode) for root user 
 — this will be the last times you need to provide root password for the nodes, afterwards it works without:
 
-generate a pair of rsa keys (press enter for all questions - dont enter passphrase)
-```bash
-ssh-keygen -t rsa
-```
+use this instruction here:
+http://wiki.hpc.ufl.edu/doc/TorqueHowto (Configuring SSH for PBS)
 
-tighten up permissions on headnode
-```bash
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/*
-```
-
-now copy the key to all the other nodes (press yes to store the RSA of the servers into the list of known hosts
-than type in the password
-
-```bash
-$BEO_SCRIPTS/node_executor.sh "cn1,cn2,sn" "mkdir -p /root/.ssh;touch /root/.ssh/authorized_keys;chmod 700 /root/.ssh;chmod 640 /root/.ssh/authorized_keys"
-```
-
-now append the rsa key to the authorized keys on all the nodes (also on headnode to make node_executor.sh work!)
-to make them know the root user on headnode (important for passwordless import)
-```bash
-cat .ssh/id_rsa.pub >> /root/.ssh/authorized_keys
-cat .ssh/id_rsa.pub | $BEO_SCRIPTS/node_append.sh "cn1,cn2,sn" "/root/.ssh/authorized_keys"
-```
-
-now test the passwordless login
+after setting up test the passwordless login
 ```bash
 ssh cn1
 ssh cn2
@@ -383,32 +361,6 @@ set a password
 $BEO_SCRIPTS/node_executor.sh "hdn,cn1,cn2" "echo '<yourpassword>' | passwd <nameofuser> --stdin"
 ```
 
-now we have to share the ssh key for this user as well in order that pbs will work
-this is similar to creating passwordless login for user root
-first logout root and login as the new user
-```bash
-#generate a key but dont enter a passphrase (hit enter for all other questions)
-ssh-keygen -t rsa
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/*
-source /opt/beowolf-scripts/beo_env.sh
-#enter the password for the new user on the nodes
-$BEO_SCRIPTS/node_executor.sh "cn1,cn2" "mkdir -p ~/.ssh;touch ~/.ssh/authorized_keys;chmod 700 ~/.ssh;chmod 640 ~/.ssh/authorized_keys"
-```
-
-now append the rsa key to the authorized keys on all the nodes (also on headnode to make node_executor.sh work!)
-to make them know the root user on headnode (important for passwordless import)
-```bash
-cat .ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-#enter the password for the new user for THE VERY LAST TIME
-cat .ssh/id_rsa.pub | $BEO_SCRIPTS/node_append.sh "cn1,cn2" "~/.ssh/authorized_keys"
-```
-
-now test the passwordless login
-```bash
-ssh cn1
-ssh cn2
-```
 test torque, should be fine now (state=free) etc.
 ```bash
 pbsnodes -a
