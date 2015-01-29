@@ -42,7 +42,7 @@ $ echo PATH=$BEO_SCRIPTS:$PATH >> /etc/environment
 this creates some setup for our beowolf cluster.
 After terminating ssh session type
 ```bash
-$ source /opt/beowolf-scripts/beo_env.sh
+$ /opt/beowolf-scripts/beo_env.sh
 ```
 for reintalization of the beowolf settings
 
@@ -66,39 +66,74 @@ vi $BEO_SCRIPTS/ext_nodelist_ip.sh
 
 and put in content
 ```bash
+
 #!/bin/bash
 
+if [ -z "$1" ] && [ -f "$1"]
+  then
+    echo "Please provide nodelist text file"
+    exit 1;
+fi
+
+NODE_CFG=$1
+NEW_FILE=$NODE_CFG'.TMP'
+
+echo "Reading in file "$NODE_CFG;
 while read host alias domain
 do
+    echo $domain
     #skip empty lines
     [ -z $host ] && [ -z $alias] && [ -z $domain] &&  continue
      IP=$(nslookup $domain | xargs | sed 's/.*Address: \([0-9.]*\).*/\1/g')
+     FQDN=$(nslookup $IP | xargs | sed 's/.*name = \(.*\)\./\1/g')
+     # this is very important to put the FQDN first in the hosts file!!!
+     # otherwise you will run into trouble when using hostbased authentication
+     echo $IP' '$FQDN  >> /etc/hosts
      echo $IP' '$host  >> /etc/hosts
      #make the same for the alias..we will later query this often
      echo $IP' '$alias  >> /etc/hosts
-     echo $host' '$alias' '$domain' '$IP >> $BEO_NODE_CFG'.TMP'
-done < $BEO_NODE_CFG
-mv $BEO_NODE_CFG'.TMP' $BEO_NODE_CFG
+     echo $host' '$alias' '$domain' '$FQDN' '$IP >> $NEW_FILE
+done < "$NODE_CFG"
+mv $NEW_FILE $NODE_CFG
 ```
-exec it now
+exec it now (needs write access to /etc/hosts , use root account)
 ```bash
 chmod +x $BEO_SCRIPTS/ext_nodelist_ip.sh
-$BEO_SCRIPTS/ext_nodelist_ip.sh 
+sudo $BEO_SCRIPTS/ext_nodelist_ip.sh $BEO_NODE_CFG
 ```
+afterwards please make sure that the fully qualified name of a server is on top of all other aliases in /etc/hosts, look into manually!
+this is crucial to make host based authentication work, otherwise there can be permission problems when trying passwordless hostbased auth.
+correct would be for example:
+```bash
+123.123.123.123   hoschi.bock.inet.telnet.de
+123.123.123.123   hoschi.bock
+123.123.123.123   hoschi
+```
+vs wrong:
+```bash
+123.123.123.123   hoschi
+123.123.123.123   hoschi.bock.inet.telnet.de
+123.123.123.123   hoschi.bock
+```
+
+
 
 * write a script which returns true domain name for given alias
 create file $BEO_SCRIPTS/get_domain_for_alias.sh
 ```bash 
 #!/bin/bash
 
-while read host alias domain ip
+while read host alias domain fqdn ip 
 do
     #skip empty lines
-    [ -z $host ] && [ -z $alias] && [ -z $domain] &&  continue
-    [ "$alias" == "$1" ] && echo $domain
+    [ -z $host ] && [ -z $alias] && [ -z $domain] [ -z $fqdn] &&  continue
+    [ "$alias" == "$1" ] && echo $fqdn
 done < $BEO_NODE_CFG
 ```
 chmod +x  $BEO_SCRIPTS/get_domain_for_alias.sh
+
+* write another one which gets the full qualified name
+
 
 * write following scripts to automate server installation (execute commands on several machines)
  create following file 

@@ -57,27 +57,77 @@ $BEO_SCRIPTS/node_executor.sh "cn1,cn2,sn" "shutdown -r now"
 generate and share roots ssh key for passwordless access to the nodes (still on headnode) for root user 
 — this will be the last times you need to provide root password for the nodes, afterwards it works without:
 
-use this instruction here:
-http://wiki.hpc.ufl.edu/doc/TorqueHowto (Configuring SSH for PBS)
+(I used this instruction here http://wiki.hpc.ufl.edu/doc/TorqueHowto (Configuring SSH for PBS) and 
+ http://itg.chem.indiana.edu/inc/wiki/software/openssh/189.html
+)
+first populate all FQD names into /etc/hosts.equiv on headnode, but first before that make sure the FQDN for every server is on top the other server names in 
+/etc/hosts otherwise hostbased auth will not work later!
 
-after setting up test the passwordless login
+correct would be for example:
 ```bash
-ssh cn1
-ssh cn2
-ssh sn
+123.123.123.123   hoschi.bock.inet.telnet.de
+123.123.123.123   hoschi.bock
+123.123.123.123   hoschi
+```
+vs wrong:
+```bash
+123.123.123.123   hoschi
+123.123.123.123   hoschi.bock.inet.telnet.de
+123.123.123.123   hoschi.bock
+```
+also make sure all the server names of all hosts are in /etc/hosts (and again first entry always the full qualified name!)
+now to the /etc/hosts.equiv on headnode, put in all the full qualified server names of all the nodes (including headnode)
+we are on the headnode:
+
+```bash
+rm /etc/hosts.equiv
+$BEO_SCRIPTS/get_domain_for_alias.sh hdn >> /etc/hosts.equiv
+$BEO_SCRIPTS/get_domain_for_alias.sh cn1 >> /etc/hosts.equiv
+$BEO_SCRIPTS/get_domain_for_alias.sh cn2 >> /etc/hosts.equiv
+$BEO_SCRIPTS/get_domain_for_alias.sh cn3 >> /etc/hosts.equiv
+$BEO_SCRIPTS/get_domain_for_alias.sh sn >> /etc/hosts.equiv
+...
+```
+In ssh client config (/etc/ssh/ssh_config) enable hostbased auth
+```
+HostbasedAuthentication yes
+EnableSSHKeysign yes
+```
+In ssh server config (/etc/ssh/sshd_config) permit hostbased auth attemps
+```
+HostbasedAuthentication yes
+IgnoreRhosts yes
+IgnoreUserKnownHosts yes
+```
+Now generate ssh keyfile for all servers (/etc/ssh/ssh_known_hosts)
+```bash
+ssh-keyscan -t rsa,rsa1,dsa -f /etc/hosts.equiv > /etc/ssh/ssh_known_hosts
+```
+Now restart ssh server on headnode to make hostbased auth to it work
+```bash
+/etc/init.d/sshd restart
+```
+Now copy all the ssh client and server and host files and keys to all the nodes and deploy it there
+```bash
+tar cvf /tmp/hostbased-ssh.tar /etc/ssh/ssh_config /etc/ssh/sshd_config /etc/ssh/ssh_known_hosts  /etc/hosts.equiv /etc/hosts
+$BEO_SCRIPTS/node_copier.sh "cn1,cn2,sn" "/tmp/hostbased-ssh.tar"
+$BEO_SCRIPTS/node_executor.sh "cn1,cn2,sn" "cd /;tar xvf /tmp/hostbased-ssh.tar;/etc/init.d/sshd restart"
 ```
 
-
-* let all nodes know from all other nodes ;)
-```bash
-cat /etc/hosts  | grep -v localhost | $BEO_SCRIPTS/node_append.sh "cn1,cn2,sn" "/etc/hosts"
-```
 
 test if above command was successful with
 ```bash
 $BEO_SCRIPTS/node_executor.sh "cn1,cn2,sn" "cat /etc/hosts"
 ```
 
+you should now be able to login to all servers from all servers using alias and no password (passwordless)
+```bash
+ssh hn1
+ssh cn1
+ssh cn2
+ssh sn 
+```
+if this does not work check that you have FQDN as first entry for every server in /etc/hosts on all servers 
 
 
 * share data directory from storagenode to all the other nodes (nfs export)
