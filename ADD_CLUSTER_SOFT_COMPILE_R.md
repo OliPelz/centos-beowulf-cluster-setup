@@ -22,3 +22,11 @@ echo 'export PATH=$PATH:/opt/software/R-3.1.2/bin/' >>/etc/profile.d/R.sh;
 chmod +x /etc/profile.d/R.sh;
 source /etc/profile.d/R.sh
 ```
+
+addimportant R environment variables to existing
+/etc/profile.d/R.sh
+
+```bash
+export R_HOME=/opt/software/R-3.1.2/lib64/R
+export R_HOME_DIR=/opt/software/R-3.1.2/lib64/R
+```
