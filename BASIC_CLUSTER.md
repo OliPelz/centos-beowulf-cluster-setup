@@ -307,6 +307,11 @@ disable headnode running jobs! - headnode is only for resource managing and sche
 chkconfig pbs_mom off
 service pbs_mom stop
 ```
+make sure scheduler and server are running on reboot
+```bash
+chkconfig pbs_server on
+chkconfig pbs_sched on
+```
 
 now configure torque, create the torque server config file
 
@@ -322,7 +327,7 @@ qmgr -c "create queue batch queue_type=execution"
 qmgr -c "set queue batch started=true"
 qmgr -c "set queue batch enabled=true"
 qmgr -c "set queue batch resources_default.nodes=1"
-qmgr -c "set queue batch resources_default.walltime=3600"
+qmgr -c "set queue batch resources_default.walltime=48:00:00"
 qmgr -c "set server default_queue=batch"
 ```
 
